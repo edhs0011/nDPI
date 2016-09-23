@@ -356,9 +356,8 @@ static void printFlow(u_int16_t thread_id, struct ndpi_flow_info *flow) {
   FILE *out = results_file ? results_file : stdout;
 
   if(!json_flag) {
-    fprintf(out, "\t%u", ++num_flows);
-
-    fprintf(out, "\t%s %s%s%s:%u <-> %s%s%s:%u ",
+    fprintf(out, "%u,", ++num_flows);
+    fprintf(out, "%s,%s%s%s,%u,%s%s%s,%u,",
 	    ipProto2Name(flow->protocol),
 	    (flow->ip_version == 6) ? "[" : "",
 	    flow->lower_name,
@@ -369,8 +368,8 @@ static void printFlow(u_int16_t thread_id, struct ndpi_flow_info *flow) {
 	    (flow->ip_version == 6) ? "]" : "",
 	    ntohs(flow->upper_port));
 
-    if(flow->vlan_id > 0) fprintf(out, "[VLAN: %u]", flow->vlan_id);
-
+    fprintf(out, "%u,", flow->vlan_id);
+/*
     if(flow->detected_protocol.master_protocol) {
       char buf[64];
 
@@ -382,14 +381,24 @@ static void printFlow(u_int16_t thread_id, struct ndpi_flow_info *flow) {
       fprintf(out, "[proto: %u/%s]",
 	      flow->detected_protocol.protocol,
 	      ndpi_get_proto_name(ndpi_thread_info[thread_id].workflow->ndpi_struct, flow->detected_protocol.protocol));
+*/
+    fprintf(out, "%u,%u,%s,%s,",
+              (flow->detected_protocol.master_protocol) ? flow->detected_protocol.master_protocol : flow->detected_protocol.protocol,
+              (flow->detected_protocol.master_protocol) ? flow->detected_protocol.protocol : 0,
+              (flow->detected_protocol.master_protocol) ? 
+                  ndpi_get_proto_name(ndpi_thread_info[thread_id].workflow->ndpi_struct, flow->detected_protocol.master_protocol)
+                  : ndpi_get_proto_name(ndpi_thread_info[thread_id].workflow->ndpi_struct, flow->detected_protocol.protocol),
+              (flow->detected_protocol.master_protocol) ?
+                  ndpi_get_proto_name(ndpi_thread_info[thread_id].workflow->ndpi_struct, flow->detected_protocol.protocol)
+                  : "");
 
-    fprintf(out, "[%u pkts/%llu bytes]",
+    fprintf(out, "%u,%llu,",
 	    flow->packets, (long long unsigned int)flow->bytes);
 
-    if(flow->host_server_name[0] != '\0') fprintf(out, "[Host: %s]", flow->host_server_name);
-    if(flow->ssl.client_certificate[0] != '\0') fprintf(out, "[SSL client: %s]", flow->ssl.client_certificate);
-    if(flow->ssl.server_certificate[0] != '\0') fprintf(out, "[SSL server: %s]", flow->ssl.server_certificate);
-    if(flow->bittorent_hash[0] != '\0') fprintf(out, "[BT Hash: %s]", flow->bittorent_hash);
+    fprintf(out, "%s,", (flow->host_server_name[0] != '\0') ? flow->host_server_name : "");
+    fprintf(out, "%s,", (flow->ssl.client_certificate[0] != '\0') ? flow->ssl.client_certificate : "");
+    fprintf(out, "%s,", (flow->ssl.server_certificate[0] != '\0') ? flow->ssl.server_certificate : "");
+    fprintf(out, "%s,", (flow->bittorent_hash[0] != '\0') ? flow->bittorent_hash : "");
 
     fprintf(out, "\n");
   } else {
@@ -956,9 +965,11 @@ static void printResults(u_int64_t tot_usec) {
 
   if(verbose) {
     FILE *out = results_file ? results_file : stdout;
+    char *csv_header = "no,cproto,srcaddr,srcport,dstaddr,dstport,vlan,fdnum,sdnum,fdetect,sdetect,pktnum,pktsize,host,sslcli,sslserv,bthash";
 
-    if(!json_flag) fprintf(out, "\n");
-
+//    if(!json_flag) fprintf(out, "\n");
+    
+    fprintf(out, "%s\n", csv_header);
     num_flows = 0;
     for(thread_id = 0; thread_id < num_threads; thread_id++) {
       for(i=0; i<NUM_ROOTS; i++)
@@ -1306,6 +1317,7 @@ int main(int argc, char **argv) {
 
   parseOptions(argc, argv);
 
+/*
   if((!json_flag) && (!quiet_mode)) {
     printf("\n-----------------------------------------------------------\n"
 	   "* NOTE: This is demo app to show *some* nDPI features.\n"
@@ -1316,6 +1328,7 @@ int main(int argc, char **argv) {
 
     printf("Using nDPI (%s) [%d thread(s)]\n", ndpi_revision(), num_threads);
   }
+*/
 
   signal(SIGINT, sigproc);
 
